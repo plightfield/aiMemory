@@ -7,7 +7,8 @@
     "dev": "vp dev",
     "build": "tsc -b && vp build",
     "lint": "eslint .",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "react": "^19.2.4",
@@ -23,6 +24,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
