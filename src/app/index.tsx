@@ -19,6 +19,7 @@ import {
   Flex,
   Modal,
   Checkbox,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
@@ -28,6 +29,7 @@ import {
   ThunderboltOutlined,
   CopyOutlined,
   EditOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { useMemory, type Memory } from "./useMemory";
 
@@ -70,6 +72,7 @@ export default function App() {
     deleteMemory,
     updateMemory,
     setError,
+    convertMemory,
   } = useMemory(activeTab);
 
   const doFetch = useCallback(
@@ -123,7 +126,6 @@ export default function App() {
     if (selectedIds.length === 0) return;
     setError(null);
     let successCount = 0;
-    // 串行删除以保证数据库稳定和 UI 刷新
     for (const id of selectedIds) {
       const success = await deleteMemory(id);
       if (success) successCount++;
@@ -131,6 +133,15 @@ export default function App() {
     if (successCount > 0) {
       message.success(`成功批量删除 ${successCount} 条记忆`);
       setSelectedIds([]);
+    }
+  };
+
+  const handleConvert = async (id: number) => {
+    setError(null);
+    const success = await convertMemory(id);
+    if (success) {
+      message.success(activeTab === "long-term" ? "已转为短时记忆" : "已转为长时记忆");
+      setSelectedIds((prev) => prev.filter((sid) => sid !== id));
     }
   };
 
@@ -358,6 +369,19 @@ export default function App() {
                           </Text>
                         </Space>
                         <Space orientation="horizontal" size={0}>
+                          <Tooltip
+                            title={activeTab === "long-term" ? "转为短时记忆" : "转为长时记忆"}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<SwapOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleConvert(item.id);
+                              }}
+                            />
+                          </Tooltip>
                           <Button
                             type="text"
                             size="small"
@@ -412,7 +436,7 @@ export default function App() {
         onOk={() => editForm.submit()}
         onCancel={() => setEditingItem(null)}
         confirmLoading={loading}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={editForm} layout="vertical" onFinish={onEditFinish}>
           <Form.Item name="role_name" label="角色" rules={[{ required: true }]}>

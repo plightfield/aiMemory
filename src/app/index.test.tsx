@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vite-plus/test";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import App from "./index";
+import { ConfigProvider } from "antd";
 
 // Antd uses some browser APIs that might need mocking in happy-dom
 Object.defineProperty(window, "matchMedia", {
@@ -24,6 +25,10 @@ describe("App Component with Ant Design", () => {
     vi.spyOn(window, "fetch");
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("should render and switch tabs", async () => {
     (window.fetch as any).mockResolvedValue({
       ok: true,
@@ -31,7 +36,11 @@ describe("App Component with Ant Design", () => {
     });
 
     await act(async () => {
-      render(<App />);
+      render(
+        <ConfigProvider theme={{ hashed: false }} wave={{ disabled: true }}>
+          <App />
+        </ConfigProvider>,
+      );
     });
 
     expect(screen.getByText("长时记忆")).toBeInTheDocument();
@@ -62,7 +71,11 @@ describe("App Component with Ant Design", () => {
     });
 
     await act(async () => {
-      render(<App />);
+      render(
+        <ConfigProvider theme={{ hashed: false }} wave={{ disabled: true }}>
+          <App />
+        </ConfigProvider>,
+      );
     });
 
     await waitFor(() => {
@@ -80,7 +93,11 @@ describe("App Component with Ant Design", () => {
     });
 
     await act(async () => {
-      render(<App />);
+      render(
+        <ConfigProvider theme={{ hashed: false }} wave={{ disabled: true }}>
+          <App />
+        </ConfigProvider>,
+      );
     });
 
     const filterInput = screen.getByPlaceholderText("搜索角色...");
@@ -94,7 +111,9 @@ describe("App Component with Ant Design", () => {
     });
 
     await waitFor(() => {
-      expect(window.fetch).toHaveBeenCalledWith(expect.stringMatching(/role_name=%E5%B0%8F\+G/));
+      expect(window.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/role_name=%E5%B0%8F(\+|%20)G/),
+      );
     });
   });
 });

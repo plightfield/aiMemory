@@ -114,5 +114,22 @@ export function useMemory(type: "long-term" | "short-term") {
     deleteMemory,
     updateMemory,
     setError,
+    convertMemory: useCallback(
+      async (id: number) => {
+        try {
+          const response = await fetch(`${API_BASE}/convert/${id}?from=${type}`, {
+            method: "POST",
+          });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          await fetchMemories();
+          return true;
+        } catch (e) {
+          const err = e instanceof Error ? e : new Error("Unknown error");
+          setError(err);
+          return false;
+        }
+      },
+      [type, fetchMemories],
+    ),
   };
 }

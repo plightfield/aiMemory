@@ -163,4 +163,67 @@ describe("AI Memory API CRUD Tests", () => {
       expect(body.page).toBe(2);
     });
   });
+
+  describe("Memory Conversion API", () => {
+    it("should convert long-term memory to short-term", async () => {
+      // 1. 准备长时记忆，指定一个特定的时间
+      const testDate = "2026-01-01 12:00:00";
+      const info = db
+        .prepare("INSERT INTO ai_memories (role_name, content, created_at) VALUES (?, ?, ?)")
+        .run(TEST_ROLE, "待转换长时", testDate);
+      const id = info.lastInsertRowid;
+
+      // 2. 调用转换接口
+      const response = await fastify.inject({
+        method: "POST",
+        url: `/convert/${id}`,
+        query: { from: "long-term" },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      // 3. 验证结果：原表已删，新表已有，且时间戳匹配
+      const oldCheck = db.prepare("SELECT * FROM ai_memories WHERE id = ?").get(id);
+      expect(oldCheck).toBeUndefined();
+
+      const newCheck = db
+        .prepare("SELECT * FROM ai_short_term_memories WHERE role_name = ? AND content = ?")
+        .get(TEST_ROLE, "待转换长时") as any;
+      expect(newCheck).toBeDefined();
+      expect(typeof newCheck.created_at).toBe("number");
+      expect(newCheck.created_at).toBe(new Date(testDate).getTime());
+    });
+
+    it("should convert short-term memory to long-term", async () => {
+      // 1. 准备短时记忆，指定一个特定的时间戳
+      const testTimestamp = 1735689600000; // 2025-01-01 00:00:00 UTC
+      const info = db
+        .prepare(
+          "INSERT INTO ai_short_term_memories (role_name, content, created_at) VALUES (?, ?, ?)",
+        )
+        .run(TEST_ROLE, "待转换短时", testTimestamp);
+      const id = info.lastInsertRowid;
+
+      // 2. 调用转换接口
+      const response = await fastify.inject({
+        method: "POST",
+        url: `/convert/${id}`,
+        query: { from: "short-term" },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      // 3. 验证结果：原表已删，新表已有，且日期字符串格式正确
+      const oldCheck = db.prepare("SELECT * FROM ai_short_term_memories WHERE id = ?").get(id);
+      expect(oldCheck).toBeUndefined();
+
+      const newCheck = db
+        .prepare("SELECT * FROM ai_memories WHERE role_name = ? AND content = ?")
+        .get(TEST_ROLE, "待转换短时") as any;
+      expect(newCheck).toBeDefined();
+      expect(typeof newCheck.created_at).toBe("string");
+      // 验证日期字符串是否包含预期的年月日部分 (ISO 格式转换)
+      expect(newCheck.created_at).toMatch(/^2025-01-01/);
+    });
+  });
 });

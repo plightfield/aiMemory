@@ -221,6 +221,74 @@ fastify.delete("/short-term/:id", { schema: { params: IdParamSchema } }, async (
   return { success: true };
 });
 
+/**
+ * 记忆转换接口 (一键长短时互转)
+ */
+fastify.post(
+  "/convert/:id",
+  {
+    schema: {
+      params: IdParamSchema,
+      querystring: z.object({ from: z.enum(["long-term", "short-term"]) }),
+    },
+  },
+  async (request) => {
+    const { id } = request.params;
+    const { from } = request.query;
+
+    const sourceTable = from === "long-term" ? "ai_memories" : "ai_short_term_memories";
+
+    // 1. 获取原始数据
+    const item = db.prepare(`SELECT role_name, content FROM ${sourceTable} WHERE id = ?`).get(id) as
+      | { role_name: string; content: string }
+      | undefined;
+
+    if (!item) {
+      throw new Error("Memory not found");
+    }
+
+    // 2. 插入到目标表
+    if (from === "long-term") {
+      // 长转短：从源表获取原始 created_at 并尝试转为时间戳，如果失败则用当前时间
+      const original = db.prepare(`SELECT created_at FROM ai_memories WHERE id = ?`).get(id) as {
+        created_at: string;
+      };
+      let timestamp = Date.now();
+      if (original && original.created_at) {
+        // 将 "YYYY-MM-DD HH:MM:SS" 转换为 "YYYY-MM-DDTHH:MM:SS" 以便更好解析
+        const timeStr = original.created_at.replace(" ", "T");
+        const parsed = new Date(timeStr).getTime();
+        if (!isNaN(parsed)) {
+          timestamp = parsed;
+        }
+      }
+
+      db.prepare(
+        /* sql */ `INSERT INTO ai_short_term_memories (role_name, content, created_at) VALUES (?, ?, ?)`,
+      ).run(item.role_name, item.content, timestamp);
+    } else {
+      // 短转长：从源表获取原始时间戳并转为本地日期字符串
+      const original = db
+        .prepare(`SELECT created_at FROM ai_short_term_memories WHERE id = ?`)
+        .get(id) as { created_at: number };
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const dateStr =
+        original && original.created_at
+          ? new Date(original.created_at - offset).toISOString().replace("T", " ").split(".")[0]
+          : new Date(Date.now() - offset).toISOString().replace("T", " ").split(".")[0];
+
+      db.prepare(
+        /* sql */ `INSERT INTO ai_memories (role_name, content, created_at) VALUES (?, ?, ?)`,
+      ).run(item.role_name, item.content, dateStr);
+    }
+
+    // 3. 从原始表删除
+    db.prepare(`DELETE FROM ${sourceTable} WHERE id = ?`).run(id);
+
+    return { success: true };
+  },
+);
+
 fastify.get("/ping", async () => {
   return { status: "ok", message: "pong", timestamp: new Date().toISOString() };
 });
