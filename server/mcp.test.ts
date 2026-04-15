@@ -93,7 +93,6 @@ describe("AI Memory MCP Logic Tests", () => {
 
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
-      // const yesterdayStr = yesterday.toISOString().split("T")[0];
 
       const insert = db.prepare(
         /* sql */ "INSERT INTO ai_short_term_memories (role_name, content, created_at) VALUES (?, ?, ?)",
@@ -116,6 +115,51 @@ describe("AI Memory MCP Logic Tests", () => {
 
       expect(rows).toHaveLength(1);
       expect(rows[0].content).toBe("今天的记忆");
+    });
+
+    it("should filter short-term memory by precise time range", () => {
+      const baseTime = new Date("2026-04-15T10:00:00").getTime();
+      const insert = db.prepare(
+        /* sql */ "INSERT INTO ai_short_term_memories (role_name, content, created_at) VALUES (?, ?, ?)",
+      );
+
+      insert.run(TEST_ROLE, "10:00:00 的记忆", baseTime);
+      insert.run(TEST_ROLE, "10:00:30 的记忆", baseTime + 30000);
+      insert.run(TEST_ROLE, "10:01:00 的记忆", baseTime + 60000);
+
+      // Query precise range: 10:00:15 to 10:00:45
+      const startTime = new Date("2026-04-15T10:00:15").getTime();
+      const endTime = new Date("2026-04-15T10:00:45").getTime();
+
+      const rows = db
+        .prepare<unknown[], { content: string }>(
+          /* sql */ "SELECT content FROM ai_short_term_memories WHERE role_name = ? AND created_at >= ? AND created_at <= ?",
+        )
+        .all(TEST_ROLE, startTime, endTime);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].content).toBe("10:00:30 的记忆");
+    });
+  });
+
+  describe("Long-term Memory Date Range", () => {
+    it("should filter long-term memory by date range", () => {
+      const insert = db.prepare(
+        /* sql */ "INSERT INTO ai_memories (role_name, content, created_at) VALUES (?, ?, ?)",
+      );
+
+      insert.run(TEST_ROLE, "旧记忆", "2026-04-10 10:00:00");
+      insert.run(TEST_ROLE, "新记忆", "2026-04-15 10:00:00");
+
+      // Query range
+      const rows = db
+        .prepare<unknown[], { content: string }>(
+          /* sql */ "SELECT content FROM ai_memories WHERE role_name = ? AND created_at >= ? AND created_at <= ?",
+        )
+        .all(TEST_ROLE, "2026-04-14 00:00:00", "2026-04-16 00:00:00");
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].content).toBe("新记忆");
     });
   });
 });

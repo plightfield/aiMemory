@@ -127,7 +127,7 @@ server.registerTool(
   {
     title: "Query Short-term Memories",
     description:
-      "Query short-term memories with optional date range filter (YYYY-MM-DD), limited to 20 latest entries",
+      "Query short-term memories with optional date range filter (YYYY-MM-DD or YYYY-MM-DD HH:mm:ss), limited to 20 latest entries",
     inputSchema: {
       role_name: z
         .string()
@@ -136,14 +136,14 @@ server.registerTool(
         ),
       start_date: z
         .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .regex(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/)
         .optional()
-        .describe("Start date in YYYY-MM-DD format"),
+        .describe("Start date in YYYY-MM-DD or YYYY-MM-DD HH:mm:ss format"),
       end_date: z
         .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .regex(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/)
         .optional()
-        .describe("End date in YYYY-MM-DD format"),
+        .describe("End date in YYYY-MM-DD or YYYY-MM-DD HH:mm:ss format"),
     },
     annotations: {
       readOnlyHint: true,
@@ -156,11 +156,13 @@ server.registerTool(
 
     if (start_date) {
       query += " AND created_at >= ?";
-      params.push(new Date(start_date).getTime());
+      const fullStartDate = start_date.includes(" ") ? start_date : `${start_date} 00:00:00`;
+      params.push(new Date(fullStartDate.replace(" ", "T")).getTime());
     }
     if (end_date) {
       query += " AND created_at <= ?";
-      params.push(new Date(`${end_date} 23:59:59`).getTime());
+      const fullEndDate = end_date.includes(" ") ? end_date : `${end_date} 23:59:59`;
+      params.push(new Date(fullEndDate.replace(" ", "T")).getTime());
     }
 
     query += " ORDER BY created_at DESC LIMIT 20";
