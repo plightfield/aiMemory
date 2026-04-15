@@ -47,7 +47,7 @@ server.registerTool(
       role_name: z
         .string()
         .describe(
-          "The name of the AI role. Available roles: 小猪 (主 agent), 小 R (前端专家), 小 G (后端专家), 小 M (Rust + 原生专家), 小 T (测试专家), 小 D (设计+需求专家)",
+          "The name of the AI role. Available roles: 小猪 (主 agent), 小 R (前端专家), 小 G (后端专家), 小 M (Rust + 原生专家), 小 T (测试专家), 小 D (设计+需求专家)。注意：传入的名字不应包含括号及括号内的内容。",
         ),
     },
     annotations: {
@@ -132,7 +132,7 @@ server.registerTool(
       role_name: z
         .string()
         .describe(
-          "The name of the AI role. Available roles: 小猪 (主 agent), 小 R (前端专家), 小 G (后端专家), 小 M (Rust + 原生专家), 小 T (测试专家), 小 D (设计+需求专家)",
+          "The name of the AI role. Available roles: 小猪 (主 agent), 小 R (前端专家), 小 G (后端专家), 小 M (Rust + 原生专家), 小 T (测试专家), 小 D (设计+需求专家)。注意：传入的名字不应包含括号及括号内的内容。",
         ),
       start_date: z
         .string()

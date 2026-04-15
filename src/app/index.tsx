@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Layout,
   Tabs,
@@ -18,6 +18,7 @@ import {
   Col,
   Flex,
   Modal,
+  Checkbox,
 } from "antd";
 import {
   PlusOutlined,
@@ -55,6 +56,9 @@ export default function App() {
   const [editingItem, setEditingItem] = useState<Memory | null>(null);
   const [editForm] = Form.useForm();
 
+  // 批量删除相关的状态
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
   const [form] = Form.useForm();
   const {
     data,
@@ -68,19 +72,23 @@ export default function App() {
     setError,
   } = useMemory(activeTab);
 
-  const doFetch = (p = page, r = roleFilter, d = dateRange) => {
-    void fetchMemories({
-      role_name: r || undefined,
-      start_date: d?.[0],
-      end_date: d?.[1],
-      page: p,
-      pageSize,
-    });
-  };
+  const doFetch = useCallback(
+    (p = page, r = roleFilter, d = dateRange) => {
+      void fetchMemories({
+        role_name: r || undefined,
+        start_date: d?.[0],
+        end_date: d?.[1],
+        page: p,
+        pageSize,
+      });
+    },
+    [page, roleFilter, dateRange, fetchMemories, pageSize],
+  );
 
   useEffect(() => {
     doFetch();
-  }, [activeTab, page, fetchMemories]);
+    setSelectedIds([]); // 切换 Tab 或分页时清空选中
+  }, [activeTab, page, doFetch]);
 
   useEffect(() => {
     if (error) {
@@ -103,11 +111,33 @@ export default function App() {
   };
 
   const handleDelete = async (id: number) => {
-    setError(null); // 清除之前的错误
+    setError(null);
     const success = await deleteMemory(id);
     if (success) {
       message.success("删除成功");
+      setSelectedIds((prev) => prev.filter((sid) => sid !== id));
     }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setError(null);
+    let successCount = 0;
+    // 串行删除以保证数据库稳定和 UI 刷新
+    for (const id of selectedIds) {
+      const success = await deleteMemory(id);
+      if (success) successCount++;
+    }
+    if (successCount > 0) {
+      message.success(`成功批量删除 ${successCount} 条记忆`);
+      setSelectedIds([]);
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id],
+    );
   };
 
   const handleEdit = (item: Memory) => {
@@ -142,7 +172,8 @@ export default function App() {
           type="text"
           size="small"
           icon={<CopyOutlined style={{ fontSize: "12px", color: "#999" }} />}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             void navigator.clipboard.writeText(roleName);
             message.success(`已复制角色名: ${roleName}`);
           }}
@@ -244,31 +275,46 @@ export default function App() {
                 ]}
               />
 
-              <Flex gap="middle" style={{ marginBottom: 16 }} wrap="wrap">
-                <Input
-                  placeholder="搜索角色..."
-                  prefix={<SearchOutlined />}
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  style={{ width: 200 }}
-                  allowClear
-                />
-                <RangePicker
-                  onChange={(dates, dateStrings) => {
-                    setDateRange(dates ? [dateStrings[0], dateStrings[1]] : undefined);
-                  }}
-                />
-                <Button
-                  type="primary"
-                  icon={<SearchOutlined />}
-                  onClick={() => {
-                    setPage(1);
-                    doFetch(1);
-                  }}
-                  loading={loading}
-                >
-                  搜索
-                </Button>
+              <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+                <Flex gap="middle" wrap="wrap">
+                  <Input
+                    placeholder="搜索角色..."
+                    prefix={<SearchOutlined />}
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    style={{ width: 200 }}
+                    allowClear
+                  />
+                  <RangePicker
+                    onChange={(dates, dateStrings) => {
+                      setDateRange(dates ? [dateStrings[0], dateStrings[1]] : undefined);
+                    }}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<SearchOutlined />}
+                    onClick={() => {
+                      setPage(1);
+                      doFetch(1);
+                    }}
+                    loading={loading}
+                  >
+                    搜索
+                  </Button>
+                </Flex>
+
+                {selectedIds.length > 0 && (
+                  <Popconfirm
+                    title={`确定删除选中的 ${selectedIds.length} 条记忆吗？`}
+                    onConfirm={handleBatchDelete}
+                    okText="确定"
+                    cancelText="取消"
+                  >
+                    <Button type="primary" danger icon={<DeleteOutlined />}>
+                      批量删除 ({selectedIds.length})
+                    </Button>
+                  </Popconfirm>
+                )}
               </Flex>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -285,6 +331,12 @@ export default function App() {
                       size="small"
                       variant="outlined"
                       styles={{ body: { padding: "12px 16px" } }}
+                      style={{
+                        cursor: "pointer",
+                        borderColor: selectedIds.includes(item.id) ? "#ff4d4f" : undefined,
+                        background: selectedIds.includes(item.id) ? "#fff1f0" : undefined,
+                      }}
+                      onClick={() => toggleSelect(item.id)}
                     >
                       <div
                         style={{
@@ -295,6 +347,11 @@ export default function App() {
                         }}
                       >
                         <Space orientation="horizontal">
+                          <Checkbox
+                            checked={selectedIds.includes(item.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleSelect(item.id)}
+                          />
                           {getRoleTag(item.role_name)}
                           <Text type="secondary" style={{ fontSize: "12px" }}>
                             {formatTime(item.created_at)}
@@ -305,7 +362,10 @@ export default function App() {
                             type="text"
                             size="small"
                             icon={<EditOutlined />}
-                            onClick={() => handleEdit(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(item);
+                            }}
                           />
                           <Popconfirm
                             title="确定删除吗？"
@@ -313,7 +373,13 @@ export default function App() {
                             okText="确定"
                             cancelText="取消"
                           >
-                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           </Popconfirm>
                         </Space>
                       </div>
@@ -350,10 +416,10 @@ export default function App() {
       >
         <Form form={editForm} layout="vertical" onFinish={onEditFinish}>
           <Form.Item name="role_name" label="角色" rules={[{ required: true }]}>
-            <Select options={roles} />
+            <Input placeholder="输入角色名" />
           </Form.Item>
           <Form.Item name="content" label="内容" rules={[{ required: true }]}>
-            <TextArea rows={4} />
+            <TextArea rows={6} />
           </Form.Item>
         </Form>
       </Modal>
