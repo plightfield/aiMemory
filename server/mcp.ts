@@ -56,8 +56,8 @@ server.registerTool(
   },
   async ({ role_name }) => {
     const rows = db
-      .prepare<unknown[], { content: string }>(
-        /* sql */ "SELECT content FROM ai_memories WHERE role_name = ? ORDER BY created_at DESC",
+      .prepare<unknown[], { content: string; created_at: string }>(
+        /* sql */ "SELECT content, created_at FROM ai_memories WHERE role_name = ? ORDER BY created_at DESC",
       )
       .all(role_name);
     return {
@@ -65,7 +65,10 @@ server.registerTool(
         {
           type: "text",
           text: JSON.stringify(
-            rows.map((r) => r.content),
+            rows.map((r) => ({
+              content: r.content,
+              created_at: r.created_at,
+            })),
             null,
             2,
           ),
@@ -147,7 +150,8 @@ server.registerTool(
     },
   },
   async ({ role_name, start_date, end_date }) => {
-    let query = /* sql */ "SELECT content FROM ai_short_term_memories WHERE role_name = ?";
+    let query =
+      /* sql */ "SELECT content, created_at FROM ai_short_term_memories WHERE role_name = ?";
     const params: any[] = [role_name];
 
     if (start_date) {
@@ -160,13 +164,18 @@ server.registerTool(
     }
 
     query += " ORDER BY created_at DESC LIMIT 20";
-    const rows = db.prepare<unknown[], { content: string }>(query).all(...params);
+    const rows = db
+      .prepare<unknown[], { content: string; created_at: number }>(query)
+      .all(...params);
     return {
       content: [
         {
           type: "text",
           text: JSON.stringify(
-            rows.map((r) => r.content),
+            rows.map((r) => ({
+              content: r.content,
+              created_at: new Date(r.created_at).toLocaleString(),
+            })),
             null,
             2,
           ),

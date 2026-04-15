@@ -34,13 +34,14 @@ describe("AI Memory MCP Logic Tests", () => {
 
       // Query
       const rows = db
-        .prepare<unknown[], { content: string }>(
-          /* sql */ "SELECT content FROM ai_memories WHERE role_name = ? ORDER BY created_at DESC",
+        .prepare<unknown[], { content: string; created_at: string }>(
+          /* sql */ "SELECT content, created_at FROM ai_memories WHERE role_name = ? ORDER BY created_at DESC",
         )
         .all(TEST_ROLE);
 
       expect(rows).toHaveLength(1);
       expect(rows[0].content).toBe(content);
+      expect(rows[0].created_at).toBeDefined();
     });
 
     it("should delete long-term memory", () => {
@@ -76,13 +77,14 @@ describe("AI Memory MCP Logic Tests", () => {
 
       // Query (should be limited to 20)
       const rows = db
-        .prepare<unknown[], { content: string }>(
-          /* sql */ "SELECT content FROM ai_short_term_memories WHERE role_name = ? ORDER BY created_at DESC LIMIT 20",
+        .prepare<unknown[], { content: string; created_at: number }>(
+          /* sql */ "SELECT content, created_at FROM ai_short_term_memories WHERE role_name = ? ORDER BY created_at DESC LIMIT 20",
         )
         .all(TEST_ROLE);
 
       expect(rows).toHaveLength(20);
       expect(rows[0].content).toBe("短期记忆 25"); // Latest first
+      expect(rows[0].created_at).toBeDefined();
     });
 
     it("should filter short-term memory by date range", () => {
