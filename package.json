@@ -8,30 +8,58 @@
     "build": "tsc -b && vp build",
     "lint": "eslint .",
     "preview": "vp preview",
+    "serve": "kill-port 4331 4332 && concurrently \"tsx ./server/index.ts\" \"vp build && vp preview\"",
+    "mcp": "tsx ./server/mcp.ts",
     "prepare": "simple-git-hooks"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.1",
+    "@fastify/cors": "^11.2.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "antd": "^6.3.5",
+    "better-sqlite3": "^12.9.0",
+    "dayjs": "^1.11.20",
+    "fastify": "^5.8.5",
+    "fastify-type-provider-zod": "^6.1.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "zod": "^4.3.6",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "happy-dom": "^20.9.0",
+    "kill-port": "^2.0.1",
     "simple-git-hooks": "^2.13.1",
+    "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
     "vite-plus": "latest"
   },
+  "engines": {
+    "node": "22.22.1"
+  },
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "simple-git-hooks"
+    ],
     "overrides": {
       "vite": "npm:@voidzero-dev/vite-plus-core@latest",
       "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
